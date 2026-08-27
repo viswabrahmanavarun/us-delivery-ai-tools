@@ -180,3 +180,37 @@ Support tickets and account metadata often contain PII (Names, Emails, Phone Num
 With 10x the ticket volume, the current bottleneck will be the **RAG embedding step** and **API Rate Limits**. Currently, embeddings are generated on-the-fly and cosine similarity is computed sequentially in-memory. 
 *   **What breaks first:** The naive loop over tickets to filter and compute embeddings will become too slow, and concurrent requests will hit OpenAI's rate limits. 
 *   **Solution:** We would migrate the embeddings to a dedicated Vector DB (like Pinecone or Milvus) and ingest tickets asynchronously via a message queue (Kafka/RabbitMQ) rather than processing them synchronously in the FastAPI request loop.
+
+## Sample Runs
+
+### Task 1: Ticket Triage Agent
+**Input Ticket:**
+```json
+{
+  "subject": "Unable to connect DataBridge Pro to Connectors",
+  "body": "Hi team, We're experiencing a critical issue with DataBridge Pro. Our Connectors pipeline has been failing since approximately yesterday morning. Error message: 'ERR_CONNECTION_TIMEOUT after 30s'."
+}
+```
+**Output (Triage & Draft):**
+```json
+{
+  "classification": {
+    "product_area": "DataBridge Pro",
+    "issue_category": "Connectivity / Timeout",
+    "urgency_tier": "P1",
+    "reasoning": "Critical impact affecting 47 users in production."
+  },
+  "relevant_doc": "knowledge-base/troubleshooting/performance-and-integrations.md",
+  "responder_team": "DataBridge Pro Support",
+  "draft_response": "Hi there, I'm sorry to hear that the DataBridge Pro connectors are timing out. I've escalated this to our support team (P1 priority) and we're looking into it right now."
+}
+```
+
+### Task 2: TAM Account Summariser
+**Input Account ID:** `ACC-3336`
+
+**Output Brief:**
+- **Executive Summary:** Omni Consumer Products is a Business tier customer with $500k ARR. However, the account is marked "At Risk" with a renewal due in 10 days and inactive usage trends.
+- **Open Risks:** High seat count vs active seats indicates under-utilization. Escalation notes show decision-maker is evaluating competitors.
+- **Churn Flags:** 
+  - 🚩 *"3 consecutive P1 tickets in the last 30 days"* - Indicates recent critical incidents eroding confidence.
